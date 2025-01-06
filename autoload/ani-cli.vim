@@ -142,7 +142,7 @@ if !exists('*Repr_Shell')
 				let state = 'norm'
 			else
 				echohl ErrorMsg
-				echomsg "extra.nvim: Repr_Shell: Internal Error: Invalid state: ".state
+				echomsg "AniCli.vim: Repr_Shell: Internal Error: Invalid state: ".state
 				echohl Normal
 			endif
 		endfor
