@@ -45,3 +45,22 @@ Using Vim built-in package manager (requires Vim v.8.0+) ([help](https://vimhelp
 ```console
 $ cd ~/.vim/pack/test/start/ && git clone https://github.com/TwoSpikes/ani-cli.nvim
 ```
+
+# How to use it
+
+## Show help
+
+```vim
+:Ani -h
+```
+
+## Examples of usage
+
+```
+:Ani -q 720p banana fish
+:Ani --skip --skip-title "one piece" -S 2 one piece
+:Ani -d -e 2 cyberpunk edgerunners
+:Ani --vlc cyberpunk edgerunners -q 1080p -e 4
+:Ani blue lock -e 5-6
+:Ani -e "5-6" blue lock
+```

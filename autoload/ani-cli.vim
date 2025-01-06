@@ -55,10 +55,11 @@ function! s:help_info()
 	\\nSome example usages:
 	\\n	:Ani -q 720p banana fish
 	\\n	:Ani --skip --skip-title \"one piece\" -S 2 one piece
-	\\n	:Ani -d -e 2 cyperpunk edgerunners
-	\\n	:Ani --vlc cyperpunk edgerunners -q 1080p -e 4
+	\\n	:Ani -d -e 2 cyberpunk edgerunners
+	\\n	:Ani --vlc cyberpunk edgerunners -q 1080p -e 4
 	\\n	:Ani blue lock -e 5-6
 	\\n	:Ani -e \"5 6\" blue lock
+	\\nPress q to exit this sceeen.
 	\", "\n"))
 	1delete
 	setlocal nomodified
@@ -66,6 +67,13 @@ function! s:help_info()
 	setlocal buftype=nofile
 	setlocal filetype=
 	setlocal undolevels=-1
+	setlocal nonumber
+	setlocal norelativenumber
+	setlocal nobuflisted
+	setlocal bufhidden=hide
+	setlocal noswapfile
+	setlocal nomodeline
+	setlocal filetype=fasm
 	let prev_filetype = g:prev_filetype
 	execute "noremap <buffer> q <cmd>execute bufnr().\"bwipeout!\"<bar>".(prev_filetype==#"alpha"?"Alpha":old_bufnr."buffer")."<cr>"
 	execute "noremap <buffer> <leader>? <cmd>execute bufnr().\"bwipeout!\"<bar>".(prev_filetype==#"alpha"?"Alpha":old_bufnr."buffer")."<cr>"
