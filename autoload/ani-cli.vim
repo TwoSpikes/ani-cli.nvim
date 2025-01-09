@@ -180,13 +180,19 @@ function! s:nth(list, prompt)
 	if len(a:list) ==# 1
 		let first = a:list[0]
 		let first = split(first, "\t")
+		if len(first) <# 3
+			return join(first, "\t")
+		endif
 		return first[1] . "\t" . first[2]
 	endif
 	let lines = []
 	for line in a:list
 		let line = split(line, "\t")
-		let line = line[0] . "\t". line[2]
-		let line = substitute(line, "\t", " ", "")
+		if len(line) <# 3
+			let line = join(line, "\t")
+		else
+			let line = line[0] . " " . line[2]
+		endif
 		let lines += [[line, 'execute']]
 	endfor
 	let opts = {'title': 'AniCli.vim: '.a:prompt}
@@ -275,7 +281,6 @@ endfunction
 
 function! s:get_links(provider_id, allanime_refr, allanime_base, agent, provider_name)
 	let episode_link=system('curl -e '.Repr_Shell(a:allanime_refr).' -s https://'.Repr_Shell(a:allanime_base).Repr_Shell(a:provider_id).' -A '.Repr_Shell(a:agent))
-	echomsg "eplink is: ".episode_link.";"
 	let episode_link=substitute(episode_link, '},{', '\n', 'g')
 	let matches=matchlist(episode_link, '[^\n]*link":"\([^"]*\)"[^\n]*"resolutionStr":"\([^"]*\)".*')
 	let episode_link=matches[2].' >'.matches[1]
@@ -284,7 +289,6 @@ function! s:get_links(provider_id, allanime_refr, allanime_base, agent, provider
 		let episode_link=matches
 	endif
 	unlet matches
-	echomsg "episode_link is: ".episode_link.";"
 	
 	if v:false
 	elseif episode_link =~# 'repackager.winxmp.com'
@@ -442,7 +446,7 @@ function! s:get_episode_url(allanime_refr, allanime_api, id, mode, ep_no, agent,
 	return episode
 endfunction
 
-function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, ep_list)
+function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, ep_list, allanime_title)
 	if a:log_episode && a:player_function !=# "debug" && a:player_function !=# "download"
 		echohl ErrorMsg
 		echomsg "AniCli.vim: error: logging is not supported"
@@ -458,15 +462,44 @@ function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id
 	if episode ==# ""
 		let episode = s:get_episode_url(a:allanime_refr, a:allanime_api, a:id, a:mode, a:ep_no, a:agent, a:allanime_base, a:quality, a:ep_list)
 	endif
+	if episode ==# ""
+		echohl ErrorMsg
+		echomsg "AniCli.vim: error: no episode url"
+		echomsg "AniCli.vim: abort"
+		echohl Normal
+		return
+	endif
+	echomsg "episode is:".episode.";"
 	if v:false
 	elseif a:player_function ==# "android_mpv"
 		silent! call system('nohup am start --user 0 -a android.intent.action.VIEW -d '.Repr_Shell(episode).' -n is.xyz.mpv/.MPVActivity')
+	elseif a:player_function ==# "android_vlc"
+		call system('nohup am start --user 0 -a android.intent.action.VIEW -d '.Repr_Shell(episode).' -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e title '.Repr_Shell(a:allanime_title).'"Episode "'.Repr_Shell(a:ep_no))
+	elseif a:player_function =~# 'iina'
+		silent! call system('nohup '.Repr_Shell(a:player_function).' --no-stdin --keep-running --mpv-force-media-title='.Repr_Shell(a:allanime_title).'Episode\ '.Repr_Shell(a:ep_no).' '.Repr_Shell(episode))
+	elseif a:player_function ==# "flatpak_mpv"
+		silent! call system('flatpak run io.mpv.Mpv --force-media-title='.Repr_Shell(a:allanime_title).'Episode\ '.Repr_Shell(a:ep_no).' '.Repr_Shell(episode))
+	elseif a:player_function =~# '^vlc'
+		silent! call system('nohup '.Repr_Shell(a:player_function).' --play-and-exit --meta-title='.Repr_Shell(a:allanime_title).'Episode\ '.Repr_Shell(a:ep_no).' '.Repr_Shell(episode))
+	elseif a:player_function =~# 'yncpla'
+		silent! call system('nohup '.Repr_Shell(a:player_function).' '.Repr_Shell(episode).' -- --force-media-title='.Repr_Shell(a:allanime_title).'Episode\ '.Repr_Shell(a:ep_no))
+	elseif a:player_function ==# 'download'
+		call system(Repr_Shell(a:player_function).' '.Repr_Shell(episode).' '.Repr_Shell(a:allanime_title).'Episode\ '.Repr_Shell(a:ep_no))
+	elseif a:player_function ==# 'catt'
+		silent! call system('nohup catt cast '.Repr_Shell(episode))
+	elseif a:player_function ==# 'iSH'
+		echohl ErrorMsg
+		echomsg "AniCli.vim: error: iSH is not supported"
+		echomsg "AniCli.vim: abort"
+		echohl Normal
+		let g:ANI_CLI_TO_EXIT = v:true
+		return
 	else
-		echomsg "Not implemented yet"
+		silent! call system('nohup '.Repr_Shell(a:player_function).' '.Repr_Shell(episode))
 	endif
 endfunction
 
-function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality)
+function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title)
 	let start = system('printf %s '.a:ep_no.'|grep -Eo \^\(-1\|\[0-9\]+\(\\.\[0-9\]+\)\?\)')
 	let end = system('printf %s '.a:ep_no.'|grep -Eo \(-1\|\[0-9\]+\(\\.\[0-9\]+\)\?\)\$')
 	let ep_list = split(a:ep_list, "\n")
@@ -503,15 +536,109 @@ function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_i
 		let range = split(range, "\n")
 		for i in range
 			echomsg "Playing episode ".ep_no."..."
-			call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list)
+			call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list, a:allanime_title)
 			if exists('g:ANI_CLI_TO_EXIT') && g:ANI_CLI_TO_EXIT
 				return
 			endif
 		endfor
 	else
-		call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list)
+		call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list, a:allanime_title)
 	endif
 endfunction
+
+function! s:time_until_next_ep(query)
+	let animeschedule = "https://animeschedule.net"
+	let data = system('curl -s -G '.animeschedule.'/api/v3/anime --data q='.Repr_Shell(a:query))
+	let data = split(data, '"id"')
+	let result = []
+	for anime in data
+		let anime = matchlist(anime, '.*,"route":"\([^"]\)","premier.*')
+		if len(anime) <# 2
+			echohl ErrorMsg
+			echomsg "AniCli.vim: api error"
+			echomsg "AniCli.vim: abort"
+			echohl Normal
+			let g:ANI_CLI_TO_EXIT = v:true
+			return
+		endif
+		let anime = anime[1]
+		let data = system('curl -s '.animeschedule.'/anime/'.anime)
+		let data = split(data, "\n")
+		let found = match(data, '"anime-header-list-buttons-wrapper"')
+		if found ==# -1
+			echohl ErrorMsg
+			echomsg "AniCli.vim: api error"
+			echomsg "AniCli.vim: abort"
+			echohl Normal
+			let g:ANI_CLI_TO_EXIT = v:true
+			return
+		endif
+		let data = data[found+1:]
+		unlet found
+		for item in data
+			let info = []
+			let next_raw_release = matchlist(item, '.*countdown-time-raw" datetime="\([^"]*\)">.*')
+			if len(next_raw_release) >=# 2
+				let info["next_raw_release"] = next_raw_release[1]
+			endif
+			let next_sub_release = matchlist(item, '.*countdown-time" datetime="\([^"]*\)">.*')
+			if len(next_sub_release) >=# 2
+				let info["next_sub_release"] = next_sub_release[1]
+			endif
+			let english_title = matchlist(item, '.*english-title">\([^<]*\)<.*')
+			if len(english_title) <# 2
+				echohl ErrorMsg
+				echomsg "AniCli.vim: api error"
+				echomsg "AniCli.vim: abort"
+				echohl Normal
+				let g:ANI_CLI_TO_EXIT = v:true
+				return
+			endif
+			let info["english_title"] = english_title[1]
+			let japanese_title = matchlist(item, '.*main-title".*>\([^<]*\)<.*')
+			if len(japanese_title) <# 2
+				echohl ErrorMsg
+				echomsg "AniCli.vim: api error"
+				echomsg "AniCli.vim: abort"
+				echohl Normal
+				let g:ANI_CLI_TO_EXIT = v:true
+				return
+			endif
+			let info["japanese_title"] = japanese_title[1]
+			if has_key("next_raw_release")
+				info["status"] = "Ongoing"
+			else
+				info["status"] = "Finished"
+			endif
+			let result += [info]
+		endfor
+	endfor
+	return result
+endfunction
+
+function! s:search_anime(allanime_refr, allanime_api, agent, mode, query)
+	let search_gql = 'query\(\ \ \ \ \ \ \ \ \$search:\ SearchInput\ \ \ \ \ \ \ \ \$limit:\ Int\ \ \ \ \ \ \ \ \$page:\ Int\ \ \ \ \ \ \ \ \$translationType:\ VaildTranslationTypeEnumType\ \ \ \ \ \ \ \ \$countryOrigin:\ VaildCountryOriginEnumType\ \ \ \ \)\ \{\ \ \ \ shows\(\ \ \ \ \ \ \ \ search:\ \$search\ \ \ \ \ \ \ \ limit:\ \$limit\ \ \ \ \ \ \ \ page:\ \$page\ \ \ \ \ \ \ \ translationType:\ \$translationType\ \ \ \ \ \ \ \ countryOrigin:\ \$countryOrigin\ \ \ \ \)\ \{\ \ \ \ \ \ \ \ edges\ \{\ \ \ \ \ \ \ \ \ \ \ \ _id\ name\ availableEpisodes\ __typename\ \ \ \ \ \ \ \}\ \ \ \ \}\}'
+
+	let data = system('curl -e '.Repr_Shell(a:allanime_refr).' -s -G '.Repr_Shell(a:allanime_api).'/api --data-urlencode variables=\{\"search\":\{\"allowAdult\":false,\"allowUnknown\":false,\"query\":\"'.Repr_Shell(a:query).'\"\},\"limit\":40,\"page\":1,\"translationType\":\"'.a:mode.'\",\"countryOrigin\":\"ALL\"\} --data-urlencode query='.search_gql.' -A '.Repr_Shell(a:agent))
+	let data = split(data, 'Show')
+	let result = []
+	for item in data
+		let item = matchlist(item, '.*_id":"\([^"]*\)","name":"\([^"]*\)",.*'.a:mode.'":\([1-9][^,]*\).*')
+		if len(item) <# 4
+			continue
+		endif
+		let item = item[1].'	'.item[2].' ('.item[3].' episodes)'
+		let item = substitute(item, '\\"', '', 'g')
+		let result += [item]
+	endfor
+	return result
+endfunction
+
+if has('nvim')
+	function! s:plugin_installed(name)
+		let result = luaeval('pcall(require, _A[1])', a:name)
+	endfunction
+endif
 
 function! AniCli(...)
 	if exists('g:ANI_CLI_TO_EXIT')
@@ -620,6 +747,7 @@ function! AniCli(...)
 
 	let query = ''
 	let index = ''
+	let ep_no = ''
 
 	let idx = 0
 	let skip = 0
@@ -836,8 +964,8 @@ function! AniCli(...)
 		endfor
 
 		if len(anime_list) <# 1
-			echomsg "No unwatched series in history!"
 			echohl ErrorMsg
+			echomsg "AniCli.vim: No unwatched series in history!"
 			echomsg "AniCli.vim: abort"
 			echohl Normal
 			return
@@ -848,8 +976,7 @@ function! AniCli(...)
 			let anime_list_2 = []
 			let i = 0
 			for anime in anime_list
-				let anime = i."\t".anime
-				let anime_list_2 += [anime]
+				let anime_list_2 += [i."\t".anime]
 				let i += 1
 			endfor
 			let index = s:nth(anime_list_2, "Select anime: ")
@@ -863,6 +990,83 @@ function! AniCli(...)
 		let ep_list = s:episodes_list(id, allanime_refr, allanime_api, agent, mode)
 		let ep_no = substitute(anime[1], '.* - episode \([0-9]\+\)$', '\1', '')
 		let allanime_title = trim(split(title, '(')[0])
+	else
+		if v:true
+		\|| has('nvim') && s:plugin_installed('noice')
+		\|| (v:true
+		\|| 	!has('nvim')
+		\|| 	!s:plugin_installed('noice')
+		\|| v:true)
+		\&& !exists('g:quickui_version')
+			let query = input('Search anime:')
+		else
+			let query = quickui#input#open('Search anime:')
+		endif
+
+		if search ==# 'nextep'
+			let data = s:time_until_next_ep(query)
+		endif
+		let query = substitute(query, ' ', '+', 'g')
+
+		let anime_list = s:search_anime(allanime_refr, allanime_api, agent, mode, query)
+		if len(anime_list) <# 1
+			echohl ErrorMsg
+			echomsg "AniCli.vim: error: No results found!"
+			echomsg "AniCli.vim: abort"
+			echohl Normal
+			return
+		endif
+		if index =~# '^[0-9]\+$'
+			result = anime_list[index]
+		endif
+		if index ==# ""
+			let anime_list_2 = []
+			let i = 0
+			for anime in anime_list
+				let anime = i."\t".anime
+				let anime_list_2 += [anime]
+				let i += 1
+			endfor
+			let index = s:nth(anime_list_2, "Select anime: ")
+			unlet anime_list_2
+			let result = anime_list[index]
+		endif
+		if !exists('result') || result ==# ""
+			echohl ErrorMsg
+			echomsg "AniCli.vim: error: No anime"
+			echomsg "AniCli.vim: abort"
+			echohl Normal
+			return
+		endif
+		let title = split(result, "\t")[1]
+		let allanime_title = split(title, '(')[0]
+		let id = split(result, "\t")[0]
+		let ep_list = s:episodes_list(id, allanime_refr, allanime_api, agent, mode)
+		if ep_no ==# ""
+			let ep_list_trimmed = []
+			for ep in ep_list
+				let ep = trim(ep)
+				if ep !=# ""
+					let ep_list_trimmed += [ep]
+				endif
+			endfor
+			let ep_no = s:nth(ep_list_trimmed, 'Select episode: ')
+			unlet ep_list_trimmed
+		endif
+		if ep_no ==# -1
+			echohl ErrorMsg
+			echomsg "AniCli.vim: Cancelled by user"
+			echohl Normal
+			return
+		endif
+		if len(ep_no) ==# 0
+			echohl ErrorMsg
+			echomsg "AniCli.vim: error: Wrong episode number"
+			echomsg "AniCli.vim: abort"
+			echohl Normal
+			return
+		endif
+		let ep_no += 1
 	endif
 
 	if skip_intro
@@ -877,11 +1081,11 @@ function! AniCli(...)
 		let mal_id = ""
 	endif
 
-	call s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality)
+	call s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title)
 
 	if exists('g:ANI_CLI_TO_EXIT') && g:ANI_CLI_TO_EXIT
 		return
 	endif
 endfunction
 
-command! -nargs=* Ani call AniCli(<q-args>)
+command! -nargs=* Ani call AniCli(<f-args>)
