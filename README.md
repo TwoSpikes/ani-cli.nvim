@@ -125,7 +125,3 @@ Then, when you see input, press <kbd>Escape</kbd>
 :Ani blue lock -e 5-6
 :Ani -e "5-6" blue lock
 ```
-
-# See also
-
-
