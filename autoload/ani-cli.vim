@@ -168,6 +168,7 @@ endfunction
 
 function! s:process_hist_entry(ep_no, id, title, allanime_refr, allanime_api, agent, mode)
 	let ep_list = s:episodes_list(a:id, a:allanime_refr, a:allanime_api, a:agent, a:mode)
+	echomsg "eplist is:".ep_list.";"
 	let latest_ep = split(ep_list, "\n")[-1]
 	let title = substitute(a:title, '[0-9]\+ episodes', latest_ep.' episodes', '')
 	if a:ep_no ># len(ep_list)
@@ -446,7 +447,19 @@ function! s:get_episode_url(allanime_refr, allanime_api, id, mode, ep_no, agent,
 	return episode
 endfunction
 
-function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, ep_list, allanime_title)
+function! s:download(episode, allanime_title, ep_no, download_dir)
+	if episode =~# 'm3u8'
+		if executable('yt-dlp')
+			call system('yt-dlp '.Repr_Shell(a:episode).' --no-skip-unavailable-fragments --fragment-retries infinite -N 16 -o '.Repr_Shell(a:download_dir).'/'.Repr_Shell(a:allanime_title).'Episode\ '.Repr_Shell(a:ep_no).'.mp4')
+		else
+			call system('ffmpeg -loglevel error -stats -i '.Repr_Shell(a:episode).' -c copy '.Repr_Shell(a:download_dir).'/'.Repr_Shell(a:ep_no).'.mp4')
+		endif
+	else
+		call system('aria2c --enable-rpc=false --check-certificate=false --continue --summary-interval=0 -x 16 -s 16 '.Repr_Shell(a:episode).' --dir='.Repr_Shell(a:download_dir).' -o '.Repr_Shell(a:allanime_title).'Episode\ '.Repr_Shell(a:ep_no).'.mp4 --download-result=hide')
+	endif
+endfunction
+
+function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, ep_list, allanime_title, download_dir)
 	if a:log_episode && a:player_function !=# "debug" && a:player_function !=# "download"
 		echohl ErrorMsg
 		echomsg "AniCli.vim: error: logging is not supported"
@@ -469,7 +482,6 @@ function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id
 		echohl Normal
 		return
 	endif
-	echomsg "episode is:".episode.";"
 	if v:false
 	elseif a:player_function ==# "android_mpv"
 		silent! call system('nohup am start --user 0 -a android.intent.action.VIEW -d '.Repr_Shell(episode).' -n is.xyz.mpv/.MPVActivity')
@@ -484,7 +496,7 @@ function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id
 	elseif a:player_function =~# 'yncpla'
 		silent! call system('nohup '.Repr_Shell(a:player_function).' '.Repr_Shell(episode).' -- --force-media-title='.Repr_Shell(a:allanime_title).'Episode\ '.Repr_Shell(a:ep_no))
 	elseif a:player_function ==# 'download'
-		call system(Repr_Shell(a:player_function).' '.Repr_Shell(episode).' '.Repr_Shell(a:allanime_title).'Episode\ '.Repr_Shell(a:ep_no))
+		call s:download(episode, a:allanime_title, a:ep_no, a:download_dir)
 	elseif a:player_function ==# 'catt'
 		silent! call system('nohup catt cast '.Repr_Shell(episode))
 	elseif a:player_function ==# 'iSH'
@@ -499,7 +511,7 @@ function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id
 	endif
 endfunction
 
-function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title)
+function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir)
 	let start = system('printf %s '.a:ep_no.'|grep -Eo \^\(-1\|\[0-9\]+\(\\.\[0-9\]+\)\?\)')
 	let end = system('printf %s '.a:ep_no.'|grep -Eo \(-1\|\[0-9\]+\(\\.\[0-9\]+\)\?\)\$')
 	let ep_list = split(a:ep_list, "\n")
@@ -536,13 +548,13 @@ function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_i
 		let range = split(range, "\n")
 		for i in range
 			echomsg "Playing episode ".ep_no."..."
-			call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list, a:allanime_title)
+			call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list, a:allanime_title, a:download_dir)
 			if exists('g:ANI_CLI_TO_EXIT') && g:ANI_CLI_TO_EXIT
 				return
 			endif
 		endfor
 	else
-		call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list, a:allanime_title)
+		call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list, a:allanime_title, a:download_dir)
 	endif
 endfunction
 
@@ -1081,7 +1093,7 @@ function! AniCli(...)
 		let mal_id = ""
 	endif
 
-	call s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title)
+	call s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir)
 
 	if exists('g:ANI_CLI_TO_EXIT') && g:ANI_CLI_TO_EXIT
 		return
