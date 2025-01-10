@@ -80,15 +80,15 @@ Using [paq-nvim](https://github.com/savq/paq-nvim):
 Using [Pathogen](https://github.com/tpope/vim-pathogen):
 ```console
 $ cd ~/.vim/bundle
-$ git clone --depth=1 https://github.com/TwoSpikes/ani-cli.nvim
 $ git clone --depth=1 https://github.com/skywind3000/vim-quickui
+$ git clone --depth=1 https://github.com/TwoSpikes/ani-cli.nvim
 ```
 
 Using Vim built-in package manager (requires Vim v.8.0+) ([help](https://vimhelp.org/repeat.txt.html#packages) or `:h packages`):
 ```console
 $ cd ~/.vim/pack/test/start/
-$ git clone --depth=1 https://github.com/TwoSpikes/ani-cli.nvim
 $ git clone --depth=1 https://github.com/skywind3000/vim-quickui
+$ git clone --depth=1 https://github.com/TwoSpikes/ani-cli.nvim
 ```
 
 # How to use it
