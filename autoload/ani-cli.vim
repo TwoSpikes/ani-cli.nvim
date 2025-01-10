@@ -168,7 +168,6 @@ endfunction
 
 function! s:process_hist_entry(ep_no, id, title, allanime_refr, allanime_api, agent, mode)
 	let ep_list = s:episodes_list(a:id, a:allanime_refr, a:allanime_api, a:agent, a:mode)
-	echomsg "eplist is:".ep_list.";"
 	let latest_ep = split(ep_list, "\n")[-1]
 	let title = substitute(a:title, '[0-9]\+ episodes', latest_ep.' episodes', '')
 	if a:ep_no ># len(ep_list)
@@ -514,10 +513,9 @@ endfunction
 function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir)
 	let start = system('printf %s '.a:ep_no.'|grep -Eo \^\(-1\|\[0-9\]+\(\\.\[0-9\]+\)\?\)')
 	let end = system('printf %s '.a:ep_no.'|grep -Eo \(-1\|\[0-9\]+\(\\.\[0-9\]+\)\?\)\$')
-	let ep_list = split(a:ep_list, "\n")
 	let ep_no = a:ep_no
 	if start ==# -1
-		let ep_no = ep_list[-1]
+		let ep_no = a:ep_list[-1]
 		let start = ""
 	endif
 	if end ==# "" || end ==# start
@@ -525,7 +523,7 @@ function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_i
 		let end = ""
 	endif
 	if end ==# -1
-		let end = ep_list[-1]
+		let end = a:ep_list[-1]
 	endif
 	let ep_no = split(ep_no, "\n")
 	let line_count = len(ep_no)
@@ -536,7 +534,7 @@ function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_i
 		if end ==# ""
 			let end = ep_no[-1]
 		endif
-		let range = system('printf %s'."\n".' '.Repr_Shell(join(ep_list, "\n")).'|sed -nE /\^'.start.'\$/,/\^'.end.'\$/p')
+		let range = system('printf %s'."\n".' '.Repr_Shell(join(a:ep_list, "\n")).'|sed -nE /\^'.start.'\$/,/\^'.end.'\$/p')
 		if range ==# ""
 			echohl ErrorMsg
 			echomsg "AniCli.vim: error: Invalid range"
@@ -548,13 +546,13 @@ function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_i
 		let range = split(range, "\n")
 		for i in range
 			echomsg "Playing episode ".ep_no."..."
-			call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list, a:allanime_title, a:download_dir)
+			call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir)
 			if exists('g:ANI_CLI_TO_EXIT') && g:ANI_CLI_TO_EXIT
 				return
 			endif
 		endfor
 	else
-		call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, ep_list, a:allanime_title, a:download_dir)
+		call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir)
 	endif
 endfunction
 
@@ -1054,16 +1052,9 @@ function! AniCli(...)
 		let allanime_title = split(title, '(')[0]
 		let id = split(result, "\t")[0]
 		let ep_list = s:episodes_list(id, allanime_refr, allanime_api, agent, mode)
+		let ep_list = split(ep_list, "\n")
 		if ep_no ==# ""
-			let ep_list_trimmed = []
-			for ep in ep_list
-				let ep = trim(ep)
-				if ep !=# ""
-					let ep_list_trimmed += [ep]
-				endif
-			endfor
-			let ep_no = s:nth(ep_list_trimmed, 'Select episode: ')
-			unlet ep_list_trimmed
+			let ep_no = s:nth(ep_list, 'Select episode: ')
 		endif
 		if ep_no ==# -1
 			echohl ErrorMsg
