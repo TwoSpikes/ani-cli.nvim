@@ -992,6 +992,12 @@ function! AniCli(...)
 			let index = s:nth(anime_list_2, "Select anime: ")
 			unlet anime_list_2
 		endif
+		if index ==# -1
+			echohl ErrorMsg
+			echomsg "AniCli.vim: Cancelled by user"
+			echohl Normal
+			return
+		endif
 		let anime = anime_list[index]
 		let anime = split(anime, "\t")
 		let anime[1] = trim(anime[1])
@@ -1038,6 +1044,12 @@ function! AniCli(...)
 				let i += 1
 			endfor
 			let index = s:nth(anime_list_2, "Select anime: ")
+			if index ==# -1
+				echohl ErrorMsg
+				echomsg "AniCli.vim: Cancelled by user"
+				echohl Normal
+				return
+			endif
 			unlet anime_list_2
 			let result = anime_list[index]
 		endif
