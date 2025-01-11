@@ -458,7 +458,31 @@ function! s:download(episode, allanime_title, ep_no, download_dir)
 	endif
 endfunction
 
-function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, ep_list, allanime_title, download_dir)
+function! s:update_history(id, histfile, ep_no, title)
+	let file = readfile(a:histfile)
+	let idx = 0
+	let found = v:false
+	let len = len(file)
+	while idx < len
+		if file[idx] =~# a:id
+			let found = v:true
+			if match(file[idx], '') !=# -1
+				let file[idx] = a:ep_no."\t".a:id."\t".a:title
+				call writefile(file, a:histfile.'.new')
+				unlet file
+			endif
+			break
+		endif
+		let idx += 1
+	endwhile
+	if !found
+		call system('cp '.Repr_Shell(a:histfile).' '.Repr_Shell(a:histfile).'.new')
+		call writefile([a:ep_no."\t".a:id."\t".a:title], a:histfile.'.new', 'a')
+	endif
+	call system('mv '.Repr_Shell(a:histfile).'.new '.Repr_Shell(a:histfile))
+endfunction
+
+function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, ep_list, allanime_title, download_dir, histfile, title)
 	if a:log_episode && a:player_function !=# "debug" && a:player_function !=# "download"
 		echohl ErrorMsg
 		echomsg "AniCli.vim: error: logging is not supported"
@@ -508,9 +532,12 @@ function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id
 	else
 		silent! call system('nohup '.Repr_Shell(a:player_function).' '.Repr_Shell(episode))
 	endif
+	let replay = episode
+	unlet episode
+	call s:update_history(a:id, a:histfile, a:ep_no, a:title)
 endfunction
 
-function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir)
+function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir, histfile, title)
 	let start = system('printf %s '.a:ep_no.'|grep -Eo \^\(-1\|\[0-9\]+\(\\.\[0-9\]+\)\?\)')
 	let end = system('printf %s '.a:ep_no.'|grep -Eo \(-1\|\[0-9\]+\(\\.\[0-9\]+\)\?\)\$')
 	let ep_no = a:ep_no
@@ -545,14 +572,16 @@ function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_i
 		endif
 		let range = split(range, "\n")
 		for i in range
+			let ep_no = ep_no[0]
 			echomsg "Playing episode ".ep_no."..."
-			call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir)
+			call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir, a:histfile, a:title)
 			if exists('g:ANI_CLI_TO_EXIT') && g:ANI_CLI_TO_EXIT
 				return
 			endif
 		endfor
 	else
-		call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir)
+		let ep_no = ep_no[0]
+		call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir, a:histfile, a:title)
 	endif
 endfunction
 
@@ -1096,7 +1125,7 @@ function! AniCli(...)
 		let mal_id = ""
 	endif
 
-	call s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir)
+	call s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir, histfile, title)
 
 	if exists('g:ANI_CLI_TO_EXIT') && g:ANI_CLI_TO_EXIT
 		return
