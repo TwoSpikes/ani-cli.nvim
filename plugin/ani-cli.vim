@@ -76,7 +76,6 @@ function! s:help_info()
 	setlocal filetype=fasm
 	let prev_filetype = g:prev_filetype
 	execute "noremap <buffer> q <cmd>execute bufnr().\"bwipeout!\"<bar>".(prev_filetype==#"alpha"?"Alpha":old_bufnr."buffer")."<cr>"
-	execute "noremap <buffer> <leader>? <cmd>execute bufnr().\"bwipeout!\"<bar>".(prev_filetype==#"alpha"?"Alpha":old_bufnr."buffer")."<cr>"
 	let g:ANI_CLI_TO_EXIT = 1
 endfunction
 

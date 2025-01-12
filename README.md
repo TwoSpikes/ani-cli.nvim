@@ -126,7 +126,7 @@ Then, when you see input, press <kbd>Escape</kbd>
 
 ## Examples of usage
 
-```
+```vim
 :Ani -q 720p banana fish
 :Ani --skip --skip-title "one piece" -S 2 one piece
 :Ani -d -e 2 cyberpunk edgerunners
