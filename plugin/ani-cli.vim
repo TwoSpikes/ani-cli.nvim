@@ -465,7 +465,7 @@ function! s:update_history(id, histfile, ep_no, title)
 	while idx < len
 		if file[idx] =~# a:id
 			let found = v:true
-			if match(file[idx], '') !=# -1
+			if match(file[idx], a:id) !=# -1
 				let file[idx] = a:ep_no."\t".a:id."\t".a:title
 				call writefile(file, a:histfile.'.new')
 				unlet file
@@ -1030,7 +1030,7 @@ function! AniCli(...)
 		let anime = split(anime, "\t")
 		let anime[1] = trim(anime[1])
 		let id = anime[0]
-		let title = substitute(anime[1], ' - episode [0-9]\+\n$', '', '')
+		let title = substitute(anime[1], ' - episode [0-9]\+$', '', '')
 		let ep_list = s:episodes_list(id, allanime_refr, allanime_api, agent, mode)
 		let ep_no = substitute(anime[1], '.* - episode \([0-9]\+\)$', '\1', '')
 		let allanime_title = trim(split(title, '(')[0])
