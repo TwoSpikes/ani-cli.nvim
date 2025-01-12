@@ -1,6 +1,6 @@
 function! s:version_info()
 	echomsg "0.0.1"
-	let g:ANI_CLI_TO_EXIT
+	let g:ANI_CLI_TO_EXIT = v:true
 endfunction
 
 function! s:help_info()
@@ -76,7 +76,7 @@ function! s:help_info()
 	setlocal filetype=fasm
 	let prev_filetype = g:prev_filetype
 	execute "noremap <buffer> q <cmd>execute bufnr().\"bwipeout!\"<bar>".(prev_filetype==#"alpha"?"Alpha":old_bufnr."buffer")."<cr>"
-	let g:ANI_CLI_TO_EXIT = 1
+	let g:ANI_CLI_TO_EXIT = v:true
 endfunction
 
 if !exists('*Repr_Shell')
@@ -566,7 +566,7 @@ function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_i
 			echomsg "AniCli.vim: error: Invalid range"
 			echomsg "AniCli.vim: abort"
 			echohl Normal
-			let g:ANI_CLI_TO_EXIT = 1
+			let g:ANI_CLI_TO_EXIT = v:true
 			return
 		endif
 		let range = split(range, "\n")
