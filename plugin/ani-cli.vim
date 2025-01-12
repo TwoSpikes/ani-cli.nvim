@@ -1,5 +1,5 @@
 function! s:version_info()
-	echomsg "0.0.1"
+	echomsg "0.1"
 	let g:ANI_CLI_TO_EXIT = v:true
 endfunction
 
