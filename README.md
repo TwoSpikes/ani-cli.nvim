@@ -91,6 +91,15 @@ $ git clone --depth=1 https://github.com/skywind3000/vim-quickui
 $ git clone --depth=1 https://github.com/TwoSpikes/ani-cli.nvim
 ```
 
+# Keymaps
+
+You can add keyboard shourtcuts similar to these
+
+```vim
+:noremap <leader>xa <cmd>Ani -c<cr>
+:noremap <leader>xA <cmd>Ani<cr>
+```
+
 # How to use it
 
 ## Show help
