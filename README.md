@@ -96,8 +96,9 @@ $ git clone --depth=1 https://github.com/TwoSpikes/ani-cli.nvim
 You can add keyboard shourtcuts similar to these
 
 ```vim
-:noremap <leader>xa <cmd>Ani -c<cr>
-:noremap <leader>xA <cmd>Ani<cr>
+:let g:ani_cli_options = "-v --dub"
+:noremap <leader>xa <cmd>execute "Ani ".g:ani_cli_options." -c"<cr>
+:noremap <leader>xA <cmd>execute "Ani ".g:ani_cli_options<cr>
 ```
 
 # How to use it
