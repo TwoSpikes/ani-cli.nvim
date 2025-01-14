@@ -755,7 +755,7 @@ function! AniCli(...)
 	endif
 	if $ANI_CLI_HIST_DIR ==# ""
 		if $XDG_STATE_HOME ==# ""
-			let hist_dir = $HOME.'/.local/state'
+			let hist_dir = expand('$HOME').'/.local/state'
 		else
 			let hist_dir = $XDG_STATE_HOME
 		endif
