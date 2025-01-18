@@ -65,7 +65,6 @@ function! s:help_info()
 	setlocal nomodified
 	setlocal nomodifiable
 	setlocal buftype=nofile
-	setlocal filetype=
 	setlocal undolevels=-1
 	setlocal nonumber
 	setlocal norelativenumber
@@ -415,8 +414,6 @@ function! s:get_episode_url(allanime_refr, allanime_api, id, mode, ep_no, agent,
 	call sort(links2, 'N')
 	call reverse(links2)
 
-	unlet links
-
 	let episode = s:select_quality(a:quality, links2)
 	let found = v:false
 	for i in a:ep_no
@@ -442,7 +439,7 @@ function! s:get_episode_url(allanime_refr, allanime_api, id, mode, ep_no, agent,
 			let g:ANI_CLI_TO_EXIT = v:true
 		endif
 	endif
-	return episode
+	return [links2, episode]
 endfunction
 
 function! s:download(episode, allanime_title, ep_no, download_dir)
@@ -495,7 +492,7 @@ function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id
 	endif
 	let episode = a:episode
 	if episode ==# ""
-		let episode = s:get_episode_url(a:allanime_refr, a:allanime_api, a:id, a:mode, a:ep_no, a:agent, a:allanime_base, a:quality, a:ep_list)
+		let [links, episode] = s:get_episode_url(a:allanime_refr, a:allanime_api, a:id, a:mode, a:ep_no, a:agent, a:allanime_base, a:quality, a:ep_list)
 	endif
 	if episode ==# ""
 		echohl ErrorMsg
@@ -534,6 +531,7 @@ function! s:play_episode(ep_no, player_function, log_episode, skip_intro, mal_id
 	let replay = episode
 	unlet episode
 	call s:update_history(a:id, a:histfile, a:ep_no, a:title)
+	return [links, replay]
 endfunction
 
 function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, episode, agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir, histfile, title)
@@ -573,14 +571,11 @@ function! s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_i
 		for i in range
 			let ep_no = ep_no[0]
 			echomsg "Playing episode ".ep_no."..."
-			call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir, a:histfile, a:title)
-			if exists('g:ANI_CLI_TO_EXIT') && g:ANI_CLI_TO_EXIT
-				return
-			endif
+			return s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir, a:histfile, a:title)
 		endfor
 	else
 		let ep_no = ep_no[0]
-		call s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir, a:histfile, a:title)
+		return s:play_episode(ep_no, a:player_function, a:log_episode, a:skip_intro, a:mal_id, a:episode, a:agent, a:allanime_refr, a:allanime_api, a:id, a:mode, a:allanime_base, a:quality, a:ep_list, a:allanime_title, a:download_dir, a:histfile, a:title)
 	endif
 endfunction
 
@@ -1094,7 +1089,7 @@ function! AniCli(...)
 		let ep_list = s:episodes_list(id, allanime_refr, allanime_api, agent, mode)
 		let ep_list = split(ep_list, "\n")
 		if ep_no ==# ""
-			let ep_no = s:nth(ep_list, 'Select episode: ')
+			let ep_no = s:nth(ep_list, 'Select episode:')
 		endif
 		if ep_no ==# -1
 			echohl ErrorMsg
@@ -1124,11 +1119,78 @@ function! AniCli(...)
 		let mal_id = ""
 	endif
 
-	call s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir, histfile, title)
-
+	let [links, replay] = s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir, histfile, title)
 	if exists('g:ANI_CLI_TO_EXIT') && g:ANI_CLI_TO_EXIT
 		return
 	endif
+
+	if v:false
+	\|| player_function ==# "debug"
+	\|| player_function ==# "download"
+		return
+	endif
+
+	while v:true
+		let list = [["next"],["replay"],["previous"],["select"],["change_quality"],["quit"]]
+		let opts = {'title': title.' ep. '.ep_no}
+		let user_input = quickui#listbox#inputlist(list, opts)
+		if user_input ==# 0
+			let ep_no += 1
+			if ep_no ># len(ep_list)
+				let ep_no = 1
+			endif
+		elseif user_input ==# 1
+			let episode = replay
+		elseif user_input ==# 2
+			let ep_no -= 1
+			if ep_no <# 1
+				let ep_no = len(ep_list)
+			endif
+		elseif user_input ==# 3
+			let ep_no = s:nth(ep_list, 'Select episode:')
+			if ep_no ==# -1
+				echohl ErrorMsg
+				echomsg "AniCli.vim: Cancelled by user"
+				echohl Normal
+				return
+			endif
+			if len(ep_no) ==# 0
+				echohl ErrorMsg
+				echomsg "AniCli.vim: error: Wrong episode number"
+				echomsg "AniCli.vim: abort"
+				echohl Normal
+				return
+			endif
+			let ep_no += 1
+		elseif user_input ==# 4
+			let opts = {'title': 'Select quality'}
+			let episode = links[quickui#listbox#inputlist(links, opts)]
+			let quality = matchlist(episode, '^[0-9]\+')
+			if len(quality) <# 1
+				let quality = ""
+			else
+				let quality = quality[0]
+			endif
+			let episode = split(episode, '>')
+			if len(episode) <# 2
+				echohl ErrorMsg
+				echomsg "AniCli.vim: error: api error"
+				echomsg "AniCli.vim: abort"
+				echohl Normal
+				return
+			endif
+		else
+			return
+		endif
+		if ep_no ==# ""
+			echohl ErrorMsg
+			echomsg "AniCli.vim: error: Out of range"
+			echomsg "AniCli.vim: abort"
+			echohl Normal
+			return
+		endif
+		let [links, replay] = s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir, histfile, title)
+	endwhile
 endfunction
 
 command! -nargs=* Ani call AniCli(<f-args>)

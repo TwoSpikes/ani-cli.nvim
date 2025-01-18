@@ -27,7 +27,7 @@ Install `mpv` app: https://github.com/mpv-android/mpv-android/releases
 
 No way yet, use original [ani-cli](https://github.com/pystardust/ani-cli)
 
-# Install
+# Installation
 
 Using [lazy.vim](https://github.com/folke/lazy.nvim):
 ```lua
