@@ -1027,6 +1027,7 @@ function! AniCli(...)
 		let id = anime[0]
 		let title = substitute(anime[1], ' - episode [0-9]\+$', '', '')
 		let ep_list = s:episodes_list(id, allanime_refr, allanime_api, agent, mode)
+		let ep_list = split(ep_list, "\n")
 		let ep_no = substitute(anime[1], '.* - episode \([0-9]\+\)$', '\1', '')
 		let allanime_title = trim(split(title, '(')[0])
 	else
@@ -1190,6 +1191,7 @@ function! AniCli(...)
 			return
 		endif
 		let [links, replay] = s:play(ep_no, ep_list, player_function, log_episode, skip_intro, mal_id, '', agent, allanime_refr, allanime_api, id, mode, allanime_base, quality, allanime_title, download_dir, histfile, title)
+		mode
 	endwhile
 endfunction
 
